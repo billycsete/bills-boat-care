@@ -75,6 +75,7 @@ gulp.task('default', ['clean'], function() {
 
 // Watch files for changes
 gulp.task('watch', function() {
+	gulp.watch('src/**/*.html', ['copy']);
 	// Watch .scss files
 	gulp.watch('src/scss/**/*.scss', ['css']);
 	// Watch .js files
