@@ -1,0 +1,89 @@
+// =================================================
+//
+// Footer
+//
+// =================================================
+
+.footer {
+	position: absolute;
+	z-index: 10;
+	width: 100%;
+	top: 200px;
+	color: #fff;
+	font-size: 12px;
+	text-align: center;
+	opacity: 0.4;
+
+	@include media('medium') {
+		font-size: 14px;
+	}
+}
+
+
+// ============================
+// Waves
+// ============================
+
+// blue wave colors
+$wave-top: #243A93;
+$wave-middle: #2C439F;
+$wave-bottom: #16287E;
+
+.ocean {
+	position: absolute;
+	z-index: 1;
+	bottom: 0px;
+	height: 240px;
+	width: 100%;
+	overflow: hidden;
+}
+.wave {
+	width: 150%;
+	margin-left: -75%;
+	position: absolute;
+	left: 50%;
+	height: 400px;
+}
+
+@keyframes wave-top {
+	0% { transform: rotate(2deg); }
+	50% { transform: rotate(-1deg); }
+	100% { transform: rotate(2deg); }
+}
+
+.wave-top {
+	top: 100px;
+	z-index: 2;
+	background-color: $wave-top;
+	transform: rotate(2deg);
+	animation: wave-top 8s infinite ease-in-out;
+}
+
+
+@keyframes wave-middle {
+	0% { transform: rotate(-3deg); }
+	50% { transform: rotate(0deg); }
+	100% { transform: rotate(-3deg); }
+}
+
+.wave-middle {
+	top: 130px;
+	z-index: 3;
+	background-color: $wave-middle;
+	transform: rotate(-3deg);
+	animation: wave-middle 6s infinite ease-in-out;
+}
+
+@keyframes wave-bottom {
+	0% { transform: rotate(1deg); }
+	50% { transform: rotate(-2deg); }
+	100% { transform: rotate(1deg); }
+}
+
+.wave-bottom {
+	top: 160px;
+	z-index: 4;
+	background-color: $wave-bottom;
+	transform: rotate(1deg);
+	animation: wave-bottom 4s infinite ease-in-out;
+}

@@ -1,0 +1,33 @@
+// =================================================
+//
+// Header
+//
+// =================================================
+
+// sail colors from logo
+// $light-blue: #5db8f3;
+// $blue: #1a9bf0;
+// $dark-blue: #137bcf;
+
+.header {
+	text-align: center;
+	position: relative;
+	margin-top: 35vh;
+	transform: translateY(-50%);
+}
+
+.intro {
+	width: 84%;
+	max-width: 680px;
+	margin-left: auto;
+	margin-right: auto;
+	color: #888;
+}
+
+.logo {
+	width: 100px;
+
+	@include media('medium') {
+		width: 140px;
+	}
+}
