@@ -571,8 +571,8 @@ p {
   background-color: #243A93;
   -webkit-transform: rotate(2deg);
           transform: rotate(2deg);
-  -webkit-animation: wave-top 6s infinite ease-in-out;
-          animation: wave-top 6s infinite ease-in-out;
+  -webkit-animation: wave-top 8s infinite ease-in-out;
+          animation: wave-top 8s infinite ease-in-out;
 }
 
 @-webkit-keyframes wave-middle {
@@ -610,8 +610,8 @@ p {
   background-color: #2C439F;
   -webkit-transform: rotate(-3deg);
           transform: rotate(-3deg);
-  -webkit-animation: wave-middle 4.5s infinite ease-in-out;
-          animation: wave-middle 4.5s infinite ease-in-out;
+  -webkit-animation: wave-middle 6s infinite ease-in-out;
+          animation: wave-middle 6s infinite ease-in-out;
 }
 
 @-webkit-keyframes wave-bottom {
@@ -649,6 +649,17 @@ p {
   background-color: #16287E;
   -webkit-transform: rotate(1deg);
           transform: rotate(1deg);
-  -webkit-animation: wave-bottom 3s infinite ease-in-out;
-          animation: wave-bottom 3s infinite ease-in-out;
+  -webkit-animation: wave-bottom 4s infinite ease-in-out;
+          animation: wave-bottom 4s infinite ease-in-out;
+}
+
+.footer {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  top: 200px;
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0.4;
 }

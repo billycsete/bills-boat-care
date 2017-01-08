@@ -144,7 +144,7 @@ p {
 	z-index: 2;
 	background-color: $wave-top;
 	transform: rotate(2deg);
-	animation: wave-top 6s infinite ease-in-out;
+	animation: wave-top 8s infinite ease-in-out;
 }
 
 
@@ -159,7 +159,7 @@ p {
 	z-index: 3;
 	background-color: $wave-middle;
 	transform: rotate(-3deg);
-	animation: wave-middle 4.5s infinite ease-in-out;
+	animation: wave-middle 6s infinite ease-in-out;
 }
 
 @keyframes wave-bottom {
@@ -173,5 +173,21 @@ p {
 	z-index: 4;
 	background-color: $wave-bottom;
 	transform: rotate(1deg);
-	animation: wave-bottom 3s infinite ease-in-out;
+	animation: wave-bottom 4s infinite ease-in-out;
+}
+
+
+// ============================
+// Footer
+// ============================
+
+.footer {
+	position: absolute;
+	z-index: 10;
+	width: 100%;
+	top: 200px;
+	color: #fff;
+	font-size: 14px;
+	text-align: center;
+	opacity: 0.4;
 }
