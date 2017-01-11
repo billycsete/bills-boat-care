@@ -553,13 +553,13 @@ p {
   width: 100%;
   top: 200px;
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
   opacity: 0.4;
 }
 @media (min-width: 760px) {
   .footer {
-    font-size: 14px;
+    font-size: 13px;
   }
 }
 
