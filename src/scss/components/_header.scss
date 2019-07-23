@@ -12,7 +12,7 @@
 .header {
 	text-align: center;
 	position: relative;
-	margin-top: 32vh;
+	margin-top: 44vh;  //was 32vh
 	transform: translateY(-50%);
 }
 
@@ -24,10 +24,25 @@
 	color: #888;
 }
 
-.logo {
-	width: 100px;
+.list {
+	width: 80%;
+	margin-left: auto;
+	text-align: left;
+	color: #888;
 
 	@include media('medium') {
-		width: 140px;
+		width: 70%;  
+	}
+	@include media('large') {
+		width: 60%;  
+	}
+}
+
+
+.logo {
+	width: 80px;   //was 100px
+
+	@include media('medium') {
+		width: 120px;  //was 140px
 	}
 }
