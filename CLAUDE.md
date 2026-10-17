@@ -33,19 +33,22 @@ There are no tests or linter. Verify changes with `npm run build` and by viewing
 - Icon names: https://lucide.dev/icons/
 
 ### Fonts
-Lato 700 (display) and Open Sans 300 (body) load from Google Fonts in `Layout.astro`.
+Self-hosted via Fontsource and imported in `global.css`: Lora Variable (`font-display`, used for h1–h3 and blockquotes) and Figtree Variable (`font-sans`, body).
+
+### Photos
+`PhotoSlot.astro` renders a polaroid-style frame. Without a `src` it shows a striped placeholder labeled with the `alt` text. To add a real photo, put the file in `public/images/photos/` and pass `src="/images/photos/<file>"`.
 
 ## Layout
 
 ```
 src/
-  layouts/Layout.astro      <html>/<head>, meta tags, fonts, global CSS
-  pages/index.astro         the single page (header content)
-  components/
-    Services.astro          services list (data array in frontmatter)
-    ContactButtons.astro    email + phone buttons
-    Ocean.astro             animated waves + footer
-  styles/global.css         Tailwind, daisyUI plugin + bbc theme, @theme tokens
+  layouts/Layout.astro      <html>/<head>, meta tags, global CSS
+  pages/index.astro         the single page: composes the section components in order
+  components/               one component per section (SiteHeader, Hero, Intro, Services,
+                            Credentials, Gallery, Quote, Contact, Ocean, MobileCallBar)
+    PhotoSlot.astro         photo frame with placeholder fallback
+  data/site.ts              name, email, phone, area (use these, don't hard-code contact details)
+  styles/global.css         Tailwind, fonts, daisyUI plugin + bbc theme, @theme tokens
 public/images/logo.png      logo + favicon (served as-is)
 docs/content-outline.md     content inventory; source of truth for site copy
 ```

@@ -1,36 +1,28 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Hero from '../components/Hero.astro';
+import Intro from '../components/Intro.astro';
 import Services from '../components/Services.astro';
-import ContactButtons from '../components/ContactButtons.astro';
+import Credentials from '../components/Credentials.astro';
+import Gallery from '../components/Gallery.astro';
+import Quote from '../components/Quote.astro';
+import Contact from '../components/Contact.astro';
 import Ocean from '../components/Ocean.astro';
+import MobileCallBar from '../components/MobileCallBar.astro';
 ---
 
 <Layout>
-  <header class="my-auto pt-8 text-center">
-    <img class="mx-auto w-20 md:w-[120px]" src="/images/logo.png" alt="" />
-    <h1 class="font-display mt-4 text-[28px] font-bold uppercase text-neutral-500 md:text-[34px]">Bill's Boat Care</h1>
-
-    <p class="mx-auto my-4 w-[82%] max-w-[680px] text-sm leading-snug text-neutral-500 md:text-base lg:text-lg">
-      Bill’s Boat Care specializes in maintenance and management of sail and power boats ranging from 30 to 60 feet in
-      the Santa Barbara, CA area. Our goal is to always have the boat ready for the owner to take wherever the next
-      adventure might be. We handle many tasks that owners don't care to do, have time for, or are too minor for vendors
-      to accommodate. For larger jobs, the best of the local vendors in Santa Barbara and Ventura are utilized.
-    </p>
-
+  <SiteHeader />
+  <main>
+    <Hero />
+    <Intro />
     <Services />
-
-    <p class="mx-auto my-4 w-[82%] max-w-[680px] text-sm leading-snug text-neutral-500 md:text-base lg:text-lg">
-      Referrals available upon request. <br />Licensed in the city of Santa Barbara.<br />
-      Please contact us for a quote or just to talk about boats!
-    </p>
-
-    <ContactButtons />
-
-    <blockquote class="mx-auto my-6 w-[82%] max-w-[680px] text-sm leading-snug text-neutral-500 md:text-base lg:text-lg">
-      "There is nothing half so much worth doing as simply messing about in boats"
-      <cite class="mt-1 block">— Kenneth Grahame, The Wind in the Willows</cite>
-    </blockquote>
-  </header>
-
+    <Credentials />
+    <Gallery />
+    <Quote />
+    <Contact />
+  </main>
   <Ocean />
+  <MobileCallBar />
 </Layout>

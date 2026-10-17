@@ -1,0 +1,15 @@
+---
+import { Mail, Phone } from '@lucide/astro';
+import { site } from '../data/site';
+---
+
+<div class="fixed inset-x-0 bottom-0 z-50 flex gap-2 border-t border-base-300 bg-base-100/95 p-2 backdrop-blur md:hidden">
+  <a href={`tel:${site.phone}`} class="btn flex-1 btn-primary">
+    <Phone size={18} aria-hidden="true" />
+    Call
+  </a>
+  <a href={`mailto:${site.email}`} class="btn flex-1 btn-outline">
+    <Mail size={18} aria-hidden="true" />
+    Email
+  </a>
+</div>
