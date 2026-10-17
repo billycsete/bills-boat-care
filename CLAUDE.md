@@ -58,7 +58,7 @@ src/
   layouts/Layout.astro      <html>/<head>, meta tags, global CSS
   pages/index.astro         the single page: composes the section components in order
   components/               one component per section (SiteHeader, Hero, Intro, Services,
-                            Credentials, Gallery, Quote, Footer, MobileCallBar)
+                            Credentials, Gallery, Quote, Footer)
     PhotoSlot.astro         photo frame with placeholder fallback
   scripts/water.ts          WebGL water simulation used by Footer.astro
   data/site.ts              name, email, phone, area (use these, don't hard-code contact details)

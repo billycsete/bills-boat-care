@@ -8,17 +8,16 @@ An outline of the content on the single-page site (`src/pages/index.astro`), in 
 - **Description:** Maintenance and management of sail and power boats from 30 to 60 feet in the Santa Barbara, CA area.
 - **Favicon:** sailboat logo
 
-## 1. Header (`SiteHeader`)
+## 1. Header (`SiteHeader`, sticky)
 
 - **Logo + name:** Bill's Boat Care
+- **Buttons:** Call 805-245-0356 (tel), Email (mailto). The call button shortens to "Call" on smaller screens, and the email button is icon-only on phones.
 
 ## 2. Hero (`Hero`)
 
-
 - **Heading (H1):** Your boat, ready for the *next adventure.*
 - **Body:** Hands-on maintenance and management for sail and power boats in the Santa Barbara area, so whenever you're ready to go, the boat is too.
-- **Buttons:** Call 805-245-0356 (tel), Email me (mailto)
-- **Facts row (under buttons, with icons):** Sail & power · 30 to 60 feet · Santa Barbara, CA
+- **Facts row (with icons):** Sail & power · 30 to 60 feet · Santa Barbara, CA
 - **Photos:** a client's boat on the water (large); work in progress (small, overlapping)
 
 ## 3. Intro (`Intro`)
@@ -72,7 +71,3 @@ An outline of the content on the single-page site (`src/pages/index.astro`), in 
 - **Location:** Santa Barbara, CA
 - **Links:** 805-245-0356 (tel), billsboatcare@outlook.com (mailto)
 - **Copyright:** © {build year} Bill's Boat Care LLC · Licensed in the city of Santa Barbara
-
-## Mobile call bar (`MobileCallBar`)
-
-Fixed to the bottom of the screen on phones: Call and Email buttons.
