@@ -1,0 +1,22 @@
+---
+const services = [
+  'Management of regular engine and generator maintenance',
+  'Outboard and dinghy maintenance',
+  'Fueling',
+  'Holding tank emptying',
+  'Work with local boat yards (Santa Barbara and Ventura) to ensure successful haul outs',
+  'Light repairs of fiberglass, electronics, plumbing, wood work and rigging',
+  'Working with local vendors on large projects for electronics, rigging, stainless, brightwork and cleaning',
+  'Regular checking of thru-hulls, bilge pumps, fluid levels, filters, strainers, etc',
+  'Pre and post trip boat checks',
+  'Available for delivery service on the US west coast',
+  'Available as crew for deliveries world wide',
+];
+---
+
+<section class="mx-auto w-4/5 md:w-[70%] lg:w-3/5">
+  <h2 class="font-display text-base font-bold text-neutral-500 md:text-xl">Some of the services we provide include:</h2>
+  <ul class="mt-4 list-disc space-y-1 pl-6 text-left text-sm leading-snug md:text-base">
+    {services.map((service) => <li>{service}</li>)}
+  </ul>
+</section>

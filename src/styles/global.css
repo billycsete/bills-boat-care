@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+
+@plugin 'daisyui' {
+  themes: false;
+}
+
+@plugin 'daisyui/theme' {
+  name: 'bbc';
+  default: true;
+  color-scheme: light;
+
+  --color-base-100: #ffffff;
+  --color-base-content: #444444;
+  --color-primary: #3dad51;
+  --color-primary-content: #ffffff;
+  --color-secondary: #1a9bf0;
+  --color-secondary-content: #ffffff;
+  --color-neutral: #16287e;
+  --color-neutral-content: #ffffff;
+  --radius-field: 0.25rem;
+}
+
+@theme {
+  --font-sans: 'Open Sans', sans-serif;
+  --font-display: 'Lato', sans-serif;
+
+  --color-wave-top: #243a93;
+  --color-wave-middle: #2c439f;
+  --color-wave-bottom: #16287e;
+}
