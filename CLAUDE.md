@@ -39,7 +39,7 @@ Self-hosted via Fontsource and imported in `global.css`: Lora Variable (`font-di
 `PhotoSlot.astro` renders a polaroid-style frame. Without a `src` it shows a striped placeholder labeled with the `alt` text. To add a real photo, put the file in `public/images/photos/` and pass `src="/images/photos/<file>"`.
 
 ### Logo
-- `src/assets/logo.svg` is the color logo (transparent background). Import it as an Astro SVG component (`import Logo from '../assets/logo.svg'`) so it's inlined; `Layout.astro` also imports it with `?url` for the favicon.
+- `src/assets/logo.svg` is the color logo (transparent background). Import it as an Astro SVG component (`import Logo from '../assets/logo.svg'`) so it's inlined; `Layout.astro` also imports it with `?url` for the favicon. Astro writes an unused copy of the file into `built/_astro/` for the component import; that is expected.
 - Inlined, its colors can be overridden with CSS custom properties: `--logo-sail` (mainsail and top of the jib), `--logo-jib-mid`, `--logo-jib-low`, `--logo-hull`. Recoloring doesn't work when it's loaded through `<img>`.
 - `public/images/logo-mono.svg` is a single-color version that uses `currentColor`.
 - The SVG uses fixed IDs (`jib`, `jib-top`, …), so inline it only once per page.
