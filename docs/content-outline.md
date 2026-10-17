@@ -65,16 +65,13 @@ An outline of the content on the single-page site (`src/pages/index.astro`), in 
 > "There is nothing half so much worth doing as simply messing about in boats."
 > — Kenneth Grahame, *The Wind in the Willows*
 
-## 8. Contact (`Contact`)
+## 8. Footer (`Footer`)
 
-- **Heading (H2):** Let's talk boats.
-- **Body:** Get in touch for a quote, or just to talk about boats.
-- **Buttons:** 805-245-0356 (tel), billsboatcare@outlook.com (mailto)
-
-## 9. Footer (`Ocean`)
-
-- **Visual:** three animated ocean waves
-- **Copyright:** © {build year} Bill's Boat Care LLC - Santa Barbara, CA
+- **Visual:** interactive WebGL ocean (three wave layers; pointer and touch push the water), with static waves as a fallback
+- **Name:** Bill's Boat Care
+- **Location:** Santa Barbara, CA
+- **Links:** 805-245-0356 (tel), billsboatcare@outlook.com (mailto)
+- **Copyright:** © {build year} Bill's Boat Care LLC · Licensed in the city of Santa Barbara
 
 ## Mobile call bar (`MobileCallBar`)
 

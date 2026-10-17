@@ -32,10 +32,6 @@
 @theme {
   --font-sans: 'Figtree Variable', sans-serif;
   --font-display: 'Lora Variable', serif;
-
-  --color-wave-top: #243a93;
-  --color-wave-middle: #2c439f;
-  --color-wave-bottom: #16287e;
 }
 
 @layer base {

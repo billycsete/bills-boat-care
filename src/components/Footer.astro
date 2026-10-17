@@ -1,0 +1,69 @@
+---
+import { Mail, MapPin, Phone } from '@lucide/astro';
+import { site } from '../data/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="relative isolate mt-auto touch-pan-y overflow-hidden text-neutral-content" data-water-root>
+  <!-- Static waves: shown before the script runs, and kept if WebGL isn't available. -->
+  <div class="water-fallback absolute inset-0 -z-10" aria-hidden="true">
+    <svg class="absolute inset-x-0 top-0 h-[150px] w-full" viewBox="0 0 1200 150" preserveAspectRatio="none">
+      <path fill="#2c439f" d="M0 62C200 50 400 72 600 60S1000 48 1200 64V150H0Z" />
+      <path fill="#1d3089" d="M0 88C180 78 420 98 640 86S1020 76 1200 90V150H0Z" />
+      <path fill="#16287e" d="M0 112C220 100 460 122 700 108S1040 100 1200 114V150H0Z" />
+    </svg>
+    <div class="absolute inset-x-0 top-[149px] bottom-0 bg-[#16287e]"></div>
+  </div>
+  <canvas class="absolute inset-0 -z-10 size-full" aria-hidden="true" data-water-canvas></canvas>
+
+  <div class="mx-auto max-w-6xl px-5 pt-44 pb-24 md:px-8 md:pb-10">
+    <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p class="font-display text-2xl font-semibold">{site.name}</p>
+        <p class="mt-1 flex items-center gap-1.5 opacity-80">
+          <MapPin size={16} aria-hidden="true" />
+          {site.area}
+        </p>
+      </div>
+      <ul class="flex flex-col gap-2 md:items-end">
+        <li>
+          <a href={`tel:${site.phone}`} class="link inline-flex items-center gap-2 link-hover">
+            <Phone size={16} aria-hidden="true" />
+            {site.phone}
+          </a>
+        </li>
+        <li>
+          <a href={`mailto:${site.email}`} class="link inline-flex items-center gap-2 break-all link-hover">
+            <Mail size={16} aria-hidden="true" />
+            {site.email}
+          </a>
+        </li>
+      </ul>
+    </div>
+    <p class="mt-8 border-t border-white/15 pt-5 text-sm opacity-70">
+      © {year} Bill's Boat Care LLC · Licensed in the city of Santa Barbara
+    </p>
+  </div>
+</footer>
+
+<style>
+  [data-water-root][data-water='webgl'] .water-fallback {
+    display: none;
+  }
+</style>
+
+<script>
+  import { startWater } from '../scripts/water';
+
+  const root = document.querySelector<HTMLElement>('[data-water-root]');
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-water-canvas]');
+  if (root && canvas) {
+    try {
+      startWater(root, canvas);
+    } catch (error) {
+      // Keep the static fallback waves if WebGL setup fails.
+      console.warn('Water effect unavailable:', error);
+    }
+  }
+</script>
