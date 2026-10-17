@@ -4,10 +4,10 @@
 //
 // =================================================
 
-@import 'shared/normailze';
-@import 'shared/breakpoints';
-@import 'shared/typography';
+@use 'shared/normailze';
+@use 'shared/breakpoints';
+@use 'shared/typography';
 
-@import 'components/button';
-@import 'components/header';
-@import 'components/footer';
+@use 'components/button';
+@use 'components/header';
+@use 'components/footer';
