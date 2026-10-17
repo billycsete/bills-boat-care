@@ -1,0 +1,65 @@
+---
+const year = new Date().getFullYear();
+---
+
+<div class="ocean relative z-[1] h-60 w-full shrink-0 overflow-hidden">
+  <div class="wave wave-top bg-wave-top"></div>
+  <div class="wave wave-middle bg-wave-middle"></div>
+  <div class="wave wave-bottom bg-wave-bottom"></div>
+
+  <footer class="absolute top-[200px] z-10 w-full text-center text-[11px] text-white opacity-60 md:text-[13px]">
+    Copyright © {year} Bill's Boat Care LLC - Santa Barbara, CA
+  </footer>
+</div>
+
+<style>
+  .wave {
+    position: absolute;
+    left: 50%;
+    width: 150%;
+    height: 400px;
+    margin-left: -75%;
+    animation: var(--duration) infinite ease-in-out wave-roll;
+  }
+
+  .wave-top {
+    --from: 2deg;
+    --to: -1deg;
+    --duration: 8s;
+    top: 100px;
+    z-index: 2;
+  }
+
+  .wave-middle {
+    --from: -3deg;
+    --to: 0deg;
+    --duration: 6s;
+    top: 130px;
+    z-index: 3;
+  }
+
+  .wave-bottom {
+    --from: 1deg;
+    --to: -2deg;
+    --duration: 4s;
+    top: 160px;
+    z-index: 4;
+  }
+
+  @keyframes wave-roll {
+    0%,
+    100% {
+      transform: rotate(var(--from));
+    }
+    50% {
+      transform: rotate(var(--to));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wave {
+      animation: none;
+      transform: rotate(var(--from));
+    }
+  }
+</style>

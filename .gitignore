@@ -55,3 +55,7 @@ Thumbs.db
 bower_components
 node_modules
 lib
+
+# Astro #
+###########
+.astro
