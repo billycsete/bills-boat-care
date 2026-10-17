@@ -40,7 +40,7 @@ Self-hosted via Fontsource and imported in `global.css`: Lora Variable (`font-di
 
 ### Footer water (`src/scripts/water.ts`)
 - `Footer.astro` loads it in a bundled `<script>`; it draws three wave layers on a WebGL canvas behind the footer content.
-- Ambient swell is summed Gerstner waves in the vertex shader; the front layers also run a 1D wave-equation simulation on the CPU. Only a pointer in the air above the water pushes on it (zone set by `GAP` and `RANGE`, measured from the highest visible wave); pointers on or in the water do nothing.
+- Ambient swell is summed Gerstner waves in the vertex shader; each layer also runs its own 1D wave-equation simulation on the CPU (`Surface`). Only a pointer in the air above the water pushes on it, measured from the highest visible wave: nothing within `GAP` px, then each layer reacts in its own band around `Layer.trigger` (back line highest, front line lowest), so the lines respond one after another. Pointers on or in the water do nothing, and force only ever presses down. Strength is set by `MOVE_FORCE`, `WAKE_FORCE` and `TAP_FORCE`.
 - Layer colors, resting heights and wave settings are in the `LAYERS` array. The front surface rests 110px from the top of the footer and is clamped so it never reaches the text (`pt-44`); keep those in sync.
 - It pauses offscreen, freezes the ambient swell under `prefers-reduced-motion`, and leaves the static SVG fallback waves in place if WebGL is unavailable.
 

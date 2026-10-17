@@ -2,8 +2,8 @@
 //
 // Each layer is a triangle strip: one vertex on the surface and one at the bottom of the
 // canvas per column. Ambient swell comes from summed Gerstner waves in the vertex shader
-// (sharp crests, wide troughs). The front layers also add a 1D wave-equation simulation
-// on the CPU, which pointer and touch input push on.
+// (sharp crests, wide troughs). On top of that, each layer runs its own 1D wave-equation
+// simulation on the CPU, which pointer and touch input push on.
 
 const COLUMN_SPACING = 6; // CSS px between simulated columns
 const EDGE_OVERDRAW = 60; // extend past both edges so Gerstner drift never shows a gap
@@ -12,11 +12,11 @@ const MAX_DISPLACEMENT = 40; // clamp on simulated height, keeps waves clear of 
 interface Layer {
   /** Resting surface, in CSS px from the top of the canvas. */
   base: number;
-  /** How strongly the interactive simulation shows on this layer (0 = ambient only). */
-  sim: number;
   surface: [number, number, number];
   deep: [number, number, number];
   highlight: number;
+  /** Height (px) above the top of the water where a pointer pushes this layer hardest. */
+  trigger: number;
   /** Gerstner waves: amplitude (px), wavelength (px), speed (px/s, sign = direction), steepness.
    *  Steepness bunches points toward the crests; keep each layer's total under 1 so crests never fold. */
   waves: [number, number, number, number][];
@@ -32,10 +32,10 @@ const hex = (h: string): [number, number, number] => [
 const LAYERS: Layer[] = [
   {
     base: 60,
-    sim: 0,
     surface: hex('#3552b0'),
     deep: hex('#2c439f'),
     highlight: 0.12,
+    trigger: 150,
     waves: [
       [5, 420, -22, 0.25],
       [3, 230, 30, 0.2],
@@ -45,10 +45,10 @@ const LAYERS: Layer[] = [
   },
   {
     base: 85,
-    sim: 0.35,
     surface: hex('#2a46a6'),
     deep: hex('#1d3089'),
     highlight: 0.16,
+    trigger: 100,
     waves: [
       [6, 520, 28, 0.3],
       [3.5, 260, -24, 0.2],
@@ -58,10 +58,10 @@ const LAYERS: Layer[] = [
   },
   {
     base: 110,
-    sim: 1,
     surface: hex('#1d3291'),
     deep: hex('#0e1a58'),
     highlight: 0.24,
+    trigger: 55,
     waves: [
       [7, 640, 34, 0.35],
       [4, 300, -30, 0.25],
@@ -78,14 +78,13 @@ attribute float a_h;
 uniform vec2 u_res;
 uniform float u_time;
 uniform float u_base;
-uniform float u_sim;
 uniform vec4 u_waves[4];
 varying float v_depth;
 varying float v_x;
 
 void main() {
   float x = a_x;
-  float lift = a_h * u_sim;
+  float lift = a_h;
   for (int i = 0; i < 4; i++) {
     vec4 w = u_waves[i];
     if (w.x == 0.0) continue;
@@ -157,7 +156,6 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     res: gl.getUniformLocation(program, 'u_res'),
     time: gl.getUniformLocation(program, 'u_time'),
     base: gl.getUniformLocation(program, 'u_base'),
-    sim: gl.getUniformLocation(program, 'u_sim'),
     waves: gl.getUniformLocation(program, 'u_waves'),
     surface: gl.getUniformLocation(program, 'u_surface'),
     deep: gl.getUniformLocation(program, 'u_deep'),
@@ -169,9 +167,93 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   let width = 0;
   let height = 0;
   let columns = 0;
-  let h = new Float32Array(0); // simulated height per column (px, up is positive)
-  let v = new Float32Array(0); // vertical velocity per column (px/s)
   let vertexHeights = new Float32Array(0);
+
+  // A push moves the surface directly, eased out over PRESS_DURATION so most of the dent
+  // appears in the first few frames, plus a little velocity so the water carries on and
+  // ripples outward afterwards.
+  const PRESS_DURATION = 0.09; // s
+  const PRESS_DEPTH = 0.05; // px of dent per unit of force
+  const PRESS_MOMENTUM = 0.4; // share of the force also given as velocity
+  const easeOut = (t: number) => 1 - (1 - t) ** 3;
+  interface Press {
+    start: number;
+    weights: Float32Array;
+    depth: number;
+    age: number;
+  }
+
+  // Wave equation with a weak spring back to rest and damping, so disturbances
+  // travel outward, reflect softly at the edges and settle.
+  const SPEED = 260; // px/s
+  const tension = (SPEED * SPEED) / (COLUMN_SPACING * COLUMN_SPACING);
+
+  /** One layer's interactive surface: its own heights, velocities and in-progress presses. */
+  class Surface {
+    h = new Float32Array(0); // simulated height per column (px, up is positive)
+    v = new Float32Array(0); // vertical velocity per column (px/s)
+    presses: Press[] = [];
+
+    resize() {
+      const old = this.h;
+      this.h = new Float32Array(columns);
+      this.v = new Float32Array(columns);
+      this.h.set(old.subarray(0, columns));
+    }
+
+    /** Push the water around x (CSS px). Positive force lifts the surface. */
+    push(x: number, force: number, radius: number) {
+      const center = (x + EDGE_OVERDRAW) / COLUMN_SPACING;
+      const reach = Math.ceil((radius * 3) / COLUMN_SPACING);
+      const start = Math.max(0, Math.floor(center - reach));
+      const end = Math.min(columns - 1, Math.ceil(center + reach));
+      if (end < start) return;
+      const weights = new Float32Array(end - start + 1);
+      for (let i = start; i <= end; i++) {
+        const d = ((i - center) * COLUMN_SPACING) / radius;
+        weights[i - start] = Math.exp(-d * d);
+        this.v[i] += force * PRESS_MOMENTUM * weights[i - start];
+      }
+      this.presses.push({ start, weights, depth: force * PRESS_DEPTH, age: 0 });
+    }
+
+    simulate(dt: number) {
+      const { h, v } = this;
+      const steps = 4;
+      const step = dt / steps;
+      for (let s = 0; s < steps; s++) {
+        this.applyPresses(step);
+        for (let i = 0; i < columns; i++) {
+          const left = h[i > 0 ? i - 1 : i];
+          const right = h[i < columns - 1 ? i + 1 : i];
+          const accel = tension * (left + right - 2 * h[i]) - 3 * h[i] - 1.6 * v[i];
+          v[i] += accel * step;
+        }
+        for (let i = 0; i < columns; i++) {
+          h[i] = Math.max(-MAX_DISPLACEMENT, Math.min(MAX_DISPLACEMENT, h[i] + v[i] * step));
+        }
+      }
+    }
+
+    applyPresses(step: number) {
+      if (!this.presses.length) return;
+      for (const press of this.presses) {
+        const t0 = press.age / PRESS_DURATION;
+        press.age = Math.min(press.age + step, PRESS_DURATION);
+        const amount = press.depth * (easeOut(press.age / PRESS_DURATION) - easeOut(t0));
+        press.weights.forEach((w, j) => {
+          const i = press.start + j;
+          if (i < columns) this.h[i] += amount * w;
+        });
+      }
+      this.presses = this.presses.filter((press) => press.age < PRESS_DURATION);
+    }
+
+    settled() {
+      return !this.presses.length && this.h.every((y, i) => Math.abs(y) < 0.05 && Math.abs(this.v[i]) < 0.5);
+    }
+  }
+  const surfaces = LAYERS.map(() => new Surface());
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -183,10 +265,7 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     gl!.viewport(0, 0, canvas.width, canvas.height);
 
     columns = Math.ceil((width + EDGE_OVERDRAW * 2) / COLUMN_SPACING) + 1;
-    const oldH = h;
-    h = new Float32Array(columns);
-    v = new Float32Array(columns);
-    h.set(oldH.subarray(0, columns));
+    surfaces.forEach((surface) => surface.resize());
     vertexHeights = new Float32Array(columns * 2);
 
     // Two vertices per column: surface (side 0) and canvas bottom (side 1).
@@ -201,39 +280,11 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     gl!.bufferData(gl!.ARRAY_BUFFER, vertexHeights, gl!.DYNAMIC_DRAW);
   }
 
-  // Wave equation with a weak spring back to rest and damping, so disturbances
-  // travel outward, reflect softly at the edges and settle.
-  const SPEED = 260; // px/s
-  const tension = (SPEED * SPEED) / (COLUMN_SPACING * COLUMN_SPACING);
-  function simulate(dt: number) {
-    const steps = 4;
-    const step = dt / steps;
-    for (let s = 0; s < steps; s++) {
-      for (let i = 0; i < columns; i++) {
-        const left = h[i > 0 ? i - 1 : i];
-        const right = h[i < columns - 1 ? i + 1 : i];
-        const accel = tension * (left + right - 2 * h[i]) - 3 * h[i] - 1.6 * v[i];
-        v[i] += accel * step;
-      }
-      for (let i = 0; i < columns; i++) {
-        h[i] = Math.max(-MAX_DISPLACEMENT, Math.min(MAX_DISPLACEMENT, h[i] + v[i] * step));
-      }
-    }
-  }
-
-  /** Push the water around x (CSS px). Positive force lifts the surface. */
-  function push(x: number, force: number, radius = 28) {
-    const center = (x + EDGE_OVERDRAW) / COLUMN_SPACING;
-    const reach = Math.ceil((radius * 3) / COLUMN_SPACING);
-    for (let i = Math.max(0, Math.floor(center - reach)); i <= Math.min(columns - 1, center + reach); i++) {
-      const d = ((i - center) * COLUMN_SPACING) / radius;
-      v[i] += force * Math.exp(-d * d);
-    }
-  }
-
-  // Pointer and touch: a pointer moving in the air just above the waves presses the water
-  // down gently, like a breeze; a press or tap there drops a small splash. Pointers on or in
-  // the water do nothing. Listens on the window so the pointer can come from the page above.
+  // Pointer and touch: a pointer moving in the air above the waves presses the water down
+  // very gently, like a breeze; a press or tap there drops a tiny splash. Each layer has its
+  // own trigger band at a different height (Layer.trigger), so as the pointer comes down the
+  // lines respond one after another rather than all at once. Pointers on or in the water do
+  // nothing. Listens on the window so the pointer can come from the page above.
   let last: { x: number; y: number; t: number } | null = null;
   function local(e: PointerEvent) {
     const rect = canvas.getBoundingClientRect();
@@ -243,27 +294,30 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   function waterTopAt(x: number) {
     const column = Math.round((x + EDGE_OVERDRAW) / COLUMN_SPACING);
     let top = Infinity;
-    for (const layer of LAYERS) {
-      let lift = (h[column] ?? 0) * layer.sim;
+    LAYERS.forEach((layer, n) => {
+      let lift = surfaces[n].h[column] ?? 0;
       for (const [amplitude, wavelength, speed] of layer.waves) {
         if (amplitude) lift += amplitude * Math.cos(((2 * Math.PI) / wavelength) * (x - speed * time));
       }
       top = Math.min(top, layer.base - lift);
-    }
+    });
     return top;
   }
-  // Influence zone, measured up from the top of the water: nothing within GAP px of the
-  // waves, then it eases in (weakest nearest the water), peaks, and fades out by GAP + RANGE.
-  const GAP = 24;
-  const RANGE = 160;
+  const POINTER_RADIUS = 16; // px; width of the dent a pointer presses into the water
+  const GAP = 24; // px above the water where nothing is triggered
+  const TRIGGER_WIDTH = 45; // px; half-height of each layer's trigger band
+  const MOVE_FORCE = 0.04; // per px/s of downward pointer speed
+  const WAKE_FORCE = 0.006; // per px/s of sideways pointer speed
+  const TAP_FORCE = 70;
   const smoothstep = (a: number, b: number, v: number) => {
     const t = Math.min(Math.max((v - a) / (b - a), 0), 1);
     return t * t * (3 - 2 * t);
   };
+  /** How strongly the pointer affects each layer (0 to 1), from its height above the water. */
   function influence(p: { x: number; y: number }) {
-    const t = (waterTopAt(p.x) - GAP - p.y) / RANGE;
-    if (t <= 0 || t >= 1 || p.x < 0 || p.x > width) return 0;
-    return smoothstep(0, 0.6, t) * (1 - smoothstep(0.6, 1, t));
+    const above = waterTopAt(p.x) - p.y;
+    const outside = above < GAP || p.x < 0 || p.x > width;
+    return LAYERS.map((layer) => (outside ? 0 : 1 - smoothstep(0, TRIGGER_WIDTH, Math.abs(above - layer.trigger))));
   }
   window.addEventListener('pointermove', (e) => {
     const p = local(e);
@@ -272,24 +326,27 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
       const dt = Math.max((p.t - last.t) / 1000, 1 / 240);
       const vx = (p.x - last.x) / dt;
       const vy = (p.y - last.y) / dt;
-      const strength = influence(p);
-      if (strength > 0) {
-        // Only ever presses the water down: downward strokes push it, sideways strokes leave
-        // a light wake, and upward strokes add nothing (the water never follows the pointer up).
-        const force = -(Math.min(Math.max(vy, 0), 1200) * 0.12 + Math.min(Math.abs(vx), 1500) * 0.02) * strength;
-        push(p.x, force, 40);
-        wake();
-      }
+      // Only ever presses the water down: downward strokes push it, sideways strokes leave
+      // a light wake, and upward strokes add nothing (the water never follows the pointer up).
+      // Speeds are capped low so a fast swipe stays as gentle and narrow as a slow one.
+      const force = -(Math.min(Math.max(vy, 0), 600) * MOVE_FORCE + Math.min(Math.abs(vx), 500) * WAKE_FORCE);
+      influence(p).forEach((strength, n) => {
+        if (strength > 0 && force < 0) {
+          surfaces[n].push(p.x, force * strength, POINTER_RADIUS);
+          wake();
+        }
+      });
     }
     last = p;
   });
   window.addEventListener('pointerdown', (e) => {
     const p = local(e);
-    const strength = influence(p);
-    if (strength > 0) {
-      push(p.x, -200 * strength, 40);
-      wake();
-    }
+    influence(p).forEach((strength, n) => {
+      if (strength > 0) {
+        surfaces[n].push(p.x, -TAP_FORCE * strength, POINTER_RADIUS * 1.25);
+        wake();
+      }
+    });
     last = p;
   });
 
@@ -305,30 +362,31 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     gl!.uniform2f(loc.res, width, height);
     gl!.uniform1f(loc.time, time);
 
-    for (let i = 0; i < columns; i++) {
-      vertexHeights[i * 2] = h[i];
-      vertexHeights[i * 2 + 1] = h[i];
-    }
-    gl!.bindBuffer(gl!.ARRAY_BUFFER, heights);
-    gl!.bufferSubData(gl!.ARRAY_BUFFER, 0, vertexHeights);
-    gl!.enableVertexAttribArray(loc.h);
-    gl!.vertexAttribPointer(loc.h, 1, gl!.FLOAT, false, 0, 0);
-
     gl!.bindBuffer(gl!.ARRAY_BUFFER, geometry);
     gl!.enableVertexAttribArray(loc.x);
     gl!.vertexAttribPointer(loc.x, 1, gl!.FLOAT, false, 8, 0);
     gl!.enableVertexAttribArray(loc.side);
     gl!.vertexAttribPointer(loc.side, 1, gl!.FLOAT, false, 8, 4);
 
-    for (const layer of LAYERS) {
+    LAYERS.forEach((layer, n) => {
+      // Upload this layer's simulated heights (same value for both vertices of a column).
+      const { h } = surfaces[n];
+      for (let i = 0; i < columns; i++) {
+        vertexHeights[i * 2] = h[i];
+        vertexHeights[i * 2 + 1] = h[i];
+      }
+      gl!.bindBuffer(gl!.ARRAY_BUFFER, heights);
+      gl!.bufferSubData(gl!.ARRAY_BUFFER, 0, vertexHeights);
+      gl!.enableVertexAttribArray(loc.h);
+      gl!.vertexAttribPointer(loc.h, 1, gl!.FLOAT, false, 0, 0);
+
       gl!.uniform1f(loc.base, layer.base);
-      gl!.uniform1f(loc.sim, layer.sim);
       gl!.uniform4fv(loc.waves, layer.waves.flat());
       gl!.uniform3fv(loc.surface, layer.surface);
       gl!.uniform3fv(loc.deep, layer.deep);
       gl!.uniform1f(loc.highlight, layer.highlight);
       gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, columns * 2);
-    }
+    });
   }
 
   function tick(now: number) {
@@ -336,10 +394,10 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     const dt = Math.min((now - previous) / 1000, 1 / 30);
     previous = now;
     if (!reducedMotion.matches) time += dt;
-    simulate(dt);
+    surfaces.forEach((surface) => surface.simulate(dt));
     draw();
     // With reduced motion the ambient swell is frozen; keep running only while a disturbance settles.
-    const settled = reducedMotion.matches && h.every((y, i) => Math.abs(y) < 0.05 && Math.abs(v[i]) < 0.5);
+    const settled = reducedMotion.matches && surfaces.every((surface) => surface.settled());
     if (visible && !settled) frame = requestAnimationFrame(tick);
   }
 
