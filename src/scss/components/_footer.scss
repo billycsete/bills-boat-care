@@ -14,7 +14,7 @@
 	color: #fff;
 	font-size: 11px;
 	text-align: center;
-	opacity: 0.4;
+	opacity: 0.6;
 
 	@include media('medium') {
 		font-size: 13px;
@@ -33,10 +33,10 @@ $wave-middle: #2C439F;
 $wave-bottom: #16287E;
 
 .ocean {
-	position: absolute;
+	position: relative;
 	z-index: 1;
-	bottom: 0px;
-	height: 240px; //was 240px
+	flex-shrink: 0;
+	height: 240px;
 	width: 100%;
 	overflow: hidden;
 }
@@ -89,4 +89,10 @@ $wave-bottom: #16287E;
 	background-color: $wave-bottom;
 	transform: rotate(1deg);
 	animation: wave-bottom 4s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.wave {
+		animation: none;
+	}
 }
