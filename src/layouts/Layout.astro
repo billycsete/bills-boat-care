@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import logoUrl from '../assets/logo.svg?url';
 
 interface Props {
   title?: string;
@@ -25,11 +26,9 @@ const {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <link rel="icon" type="image/png" href="/images/logo.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700&family=Open+Sans:wght@300&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href={logoUrl} />
   </head>
-  <body class="flex min-h-screen flex-col font-sans font-light">
+  <body class="flex min-h-screen flex-col bg-base-100 font-sans text-base-content">
     <slot />
   </body>
 </html>

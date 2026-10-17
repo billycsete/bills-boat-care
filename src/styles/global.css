@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/lora';
+@import '@fontsource-variable/lora/wght-italic.css';
+@import '@fontsource-variable/figtree';
 
 @plugin 'daisyui' {
   themes: false;
@@ -9,22 +12,33 @@
   default: true;
   color-scheme: light;
 
-  --color-base-100: #ffffff;
-  --color-base-content: #444444;
-  --color-primary: #3dad51;
+  /* sand and sea ink, with the coral hull and blue sails from the logo */
+  --color-base-100: #fbf7f0;
+  --color-base-200: #f3ecdf;
+  --color-base-300: #e4d8c4;
+  --color-base-content: #1f2a44;
+  --color-primary: #c4453b;
   --color-primary-content: #ffffff;
-  --color-secondary: #1a9bf0;
+  --color-secondary: #1a73c9;
   --color-secondary-content: #ffffff;
   --color-neutral: #16287e;
   --color-neutral-content: #ffffff;
-  --radius-field: 0.25rem;
+
+  --radius-box: 1rem;
+  --radius-field: 999px;
+  --radius-selector: 999px;
 }
 
 @theme {
-  --font-sans: 'Open Sans', sans-serif;
-  --font-display: 'Lato', sans-serif;
+  --font-sans: 'Figtree Variable', sans-serif;
+  --font-display: 'Lora Variable', serif;
+}
 
-  --color-wave-top: #243a93;
-  --color-wave-middle: #2c439f;
-  --color-wave-bottom: #16287e;
+@layer base {
+  h1,
+  h2,
+  h3,
+  blockquote {
+    font-family: var(--font-display);
+  }
 }

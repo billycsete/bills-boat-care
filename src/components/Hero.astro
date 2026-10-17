@@ -1,0 +1,54 @@
+---
+import { Mail, MapPin, Phone, Ruler, Sailboat } from '@lucide/astro';
+import PhotoSlot from './PhotoSlot.astro';
+import { site } from '../data/site';
+
+const facts = [
+  { icon: Sailboat, text: 'Sail & power' },
+  { icon: Ruler, text: '30 to 60 feet' },
+  { icon: MapPin, text: site.area },
+];
+---
+
+<section
+  class="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pt-6 pb-16 md:grid-cols-[1.1fr_1fr] md:px-8 md:pt-12 md:pb-24"
+>
+  <div>
+    <h1 class="text-5xl leading-[1.05] font-semibold md:text-6xl">
+      Your boat, ready for the <em class="text-primary">next adventure.</em>
+    </h1>
+    <p class="mt-6 max-w-xl text-lg leading-relaxed text-base-content/80">
+      Hands-on maintenance and management for sail and power boats in the Santa Barbara area, so whenever you're ready
+      to go, the boat is too.
+    </p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a href={`tel:${site.phone}`} class="btn btn-lg btn-primary">
+        <Phone size={20} aria-hidden="true" />
+        Call {site.phone}
+      </a>
+      <a href={`mailto:${site.email}`} class="btn btn-outline btn-lg">
+        <Mail size={20} aria-hidden="true" />
+        Email me
+      </a>
+    </div>
+    <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-medium text-base-content/70">
+      {
+        facts.map(({ icon: Icon, text }) => (
+          <li class="flex items-center gap-2">
+            <Icon size={18} class="text-secondary" aria-hidden="true" />
+            {text}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <div class="relative mx-auto w-full max-w-md pb-10 md:pb-0">
+    <PhotoSlot alt="A client's boat on the water" aspect="aspect-[4/5]" class="rotate-2" />
+    <PhotoSlot
+      alt="Work in progress"
+      aspect="aspect-square"
+      class="absolute -bottom-2 -left-4 w-40 -rotate-6 md:-bottom-10 md:-left-14 md:w-48"
+    />
+  </div>
+</section>
