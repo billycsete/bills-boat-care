@@ -13,9 +13,9 @@
 
 .header {
 	text-align: center;
-	position: relative;
-	margin-top: 44vh;  //was 32vh
-	transform: translateY(-50%);
+	// centers the header vertically in the space above the ocean
+	margin: auto 0;
+	padding-top: 30px;
 }
 
 .intro {
@@ -23,14 +23,14 @@
 	max-width: 680px;
 	margin-left: auto;
 	margin-right: auto;
-	color: #888;
+	color: #666;
 }
 
 .list {
 	width: 80%;
 	margin-left: auto;
 	text-align: left;
-	color: #888;
+	color: #666;
 
 	@include media('medium') {
 		width: 70%;  
