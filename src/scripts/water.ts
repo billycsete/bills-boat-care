@@ -231,45 +231,66 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     }
   }
 
-  // Pointer and touch: moving across the front surface drags the water with it,
-  // and a press or tap drops a splash.
+  // Pointer and touch: a pointer moving in the air just above the waves presses the water
+  // down gently, like a breeze; a press or tap there drops a small splash. Pointers on or in
+  // the water do nothing. Listens on the window so the pointer can come from the page above.
   let last: { x: number; y: number; t: number } | null = null;
-  const front = LAYERS[LAYERS.length - 1];
   function local(e: PointerEvent) {
     const rect = canvas.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top, t: e.timeStamp };
   }
-  // How strongly the pointer affects the water, by its distance from the front surface.
-  // Above the water it fades gently as the pointer rises. At and below the surface it is
-  // much weaker and fades fast, so moving through the water or over the footer text barely
-  // stirs it.
-  function influence(p: { x: number; y: number }) {
-    const column = Math.round((p.x + EDGE_OVERDRAW) / COLUMN_SPACING);
-    const below = p.y - (front.base - (h[column] ?? 0));
-    return below < 0 ? Math.exp(below / 45) : 0.25 * Math.exp(-below / 20);
+  /** Top of the visible water at x (CSS px from the canvas top): the highest of all layers, swell included. */
+  function waterTopAt(x: number) {
+    const column = Math.round((x + EDGE_OVERDRAW) / COLUMN_SPACING);
+    let top = Infinity;
+    for (const layer of LAYERS) {
+      let lift = (h[column] ?? 0) * layer.sim;
+      for (const [amplitude, wavelength, speed] of layer.waves) {
+        if (amplitude) lift += amplitude * Math.cos(((2 * Math.PI) / wavelength) * (x - speed * time));
+      }
+      top = Math.min(top, layer.base - lift);
+    }
+    return top;
   }
-  root.addEventListener('pointermove', (e) => {
+  // Influence zone, measured up from the top of the water: nothing within GAP px of the
+  // waves, then it eases in (weakest nearest the water), peaks, and fades out by GAP + RANGE.
+  const GAP = 24;
+  const RANGE = 160;
+  const smoothstep = (a: number, b: number, v: number) => {
+    const t = Math.min(Math.max((v - a) / (b - a), 0), 1);
+    return t * t * (3 - 2 * t);
+  };
+  function influence(p: { x: number; y: number }) {
+    const t = (waterTopAt(p.x) - GAP - p.y) / RANGE;
+    if (t <= 0 || t >= 1 || p.x < 0 || p.x > width) return 0;
+    return smoothstep(0, 0.6, t) * (1 - smoothstep(0.6, 1, t));
+  }
+  window.addEventListener('pointermove', (e) => {
     const p = local(e);
-    if (last && p.t > last.t) {
+    // Treat a long pause as a fresh start so a jump doesn't read as a fast stroke.
+    if (last && p.t > last.t && p.t - last.t < 100) {
       const dt = Math.max((p.t - last.t) / 1000, 1 / 240);
       const vx = (p.x - last.x) / dt;
       const vy = (p.y - last.y) / dt;
-      const near = influence(p);
-      if (near > 0.02) {
-        // Down/up strokes push the surface the same way; sideways strokes leave a wake.
-        const force = (-Math.max(-1600, Math.min(1600, vy)) * 0.35 - Math.min(Math.abs(vx), 2000) * 0.06) * near;
-        push(p.x, force);
+      const strength = influence(p);
+      if (strength > 0) {
+        // Only ever presses the water down: downward strokes push it, sideways strokes leave
+        // a light wake, and upward strokes add nothing (the water never follows the pointer up).
+        const force = -(Math.min(Math.max(vy, 0), 1200) * 0.12 + Math.min(Math.abs(vx), 1500) * 0.02) * strength;
+        push(p.x, force, 40);
+        wake();
       }
     }
     last = p;
-    wake();
   });
-  root.addEventListener('pointerleave', () => (last = null));
-  root.addEventListener('pointerdown', (e) => {
+  window.addEventListener('pointerdown', (e) => {
     const p = local(e);
-    push(p.x, -520 * Math.max(influence(p), 0.15), 34);
+    const strength = influence(p);
+    if (strength > 0) {
+      push(p.x, -200 * strength, 40);
+      wake();
+    }
     last = p;
-    wake();
   });
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
