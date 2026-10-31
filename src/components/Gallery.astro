@@ -1,12 +1,32 @@
 ---
 import PhotoSlot from './PhotoSlot.astro';
 
-// Add a `src` (e.g. '/images/photos/haul-out.jpg') to an entry to swap in a real photo.
+// Add a `src` (e.g. '/images/photos/haul-out.webp') to an entry to swap in a real photo.
 const photos = [
-  { alt: 'Engine or generator service', caption: 'Engine day', class: '-rotate-2' },
-  { alt: 'Haul out at a local boat yard', caption: 'Haul out', class: 'rotate-1 md:mt-8' },
-  { alt: 'Rigging or brightwork project', caption: 'Brightwork', class: '-rotate-1' },
-  { alt: 'A delivery under way', caption: 'Delivery up the coast', class: 'rotate-2 md:mt-8' },
+  {
+    src: '/images/photos/engine-room-generator.webp',
+    alt: 'Engine and generator in an engine room',
+    caption: 'Engine day',
+    class: '-rotate-2',
+  },
+  {
+    src: '/images/photos/boat-on-the-hard.webp',
+    alt: 'A sailboat in the lift at a local boat yard',
+    caption: 'Haul out',
+    class: 'rotate-1 md:mt-8',
+  },
+  {
+    src: '/images/photos/fitting-bow-furler.webp',
+    alt: 'Fitting a roller furler at the bow',
+    caption: 'Rigging',
+    class: '-rotate-1',
+  },
+  {
+    src: '/images/photos/sloop-under-sail-sb-channel.webp',
+    alt: 'A sloop under sail off Santa Barbara',
+    caption: 'Delivery up the coast',
+    class: 'rotate-2 md:mt-8',
+  },
 ];
 ---
 
