@@ -34,7 +34,7 @@ const photos = [
   <div class="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
     <h2 class="text-4xl font-semibold md:text-5xl">From the logbook</h2>
     <p class="mt-4 max-w-xl text-lg text-base-content/80">A few snapshots from around the harbor.</p>
-    <div class="mt-10 grid grid-cols-2 gap-5 md:grid-cols-4 md:gap-8">
+    <div class="mt-10 grid grid-cols-2 items-start gap-5 md:grid-cols-4 md:gap-8">
       {photos.map((photo) => <PhotoSlot {...photo} aspect="aspect-square" />)}
     </div>
   </div>
