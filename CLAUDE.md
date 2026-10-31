@@ -12,11 +12,16 @@ Requires Node 22.22+ (Astro 7 minimum).
 
 There are no tests or linter. Verify changes with `npm run build` and by viewing the page.
 
+## Deploy
+
+Every push to `master` builds the site in GitHub Actions and publishes it to GitHub Pages (`.github/workflows/deploy.yml`). Settings → Pages → Source must be "GitHub Actions". Until the custom domain is set, the site is served from https://billycsete.github.io/bills-boat-care/, so the workflow passes that subpath as `BASE_PATH` (an output of `actions/configure-pages`), which becomes Astro's `base`. Once a custom domain is set in the Pages settings, `BASE_PATH` is empty and no code change is needed.
+
 ## Stack
 
 ### Astro 7 (`astro.config.mjs`)
 - Static output (`outDir: './built'`). The `built/` folder is committed to git, so rebuild before committing a change you want to ship.
 - `site` is set to `https://billsboatcare.com` and feeds `Astro.site` (used for `og:url`).
+- `base` comes from the `BASE_PATH` env var (see Deploy). Build root-relative links from `import.meta.env.BASE_URL` (always ends in `/`), not a bare `/`. `PhotoSlot` does this for its `src`.
 - Component frontmatter runs at build time only. For example, the copyright year in `Footer.astro` is the build year.
 - Use scoped `<style>` blocks only for things Tailwind can't express well, such as hiding the footer's fallback waves once WebGL starts.
 
