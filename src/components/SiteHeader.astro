@@ -4,7 +4,7 @@ import { site } from '../data/site';
 ---
 
 <header class="mx-auto flex w-full max-w-6xl items-center px-5 py-4 md:px-8">
-  <a href="/" class="flex items-center gap-2.5">
+  <a href={import.meta.env.BASE_URL} class="flex items-center gap-2.5">
     <Logo class="h-9 w-[33px]" aria-hidden="true" />
     <span class="font-display text-xl font-semibold">{site.name}</span>
   </a>

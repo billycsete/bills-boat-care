@@ -25,7 +25,7 @@ const {
     <meta property="og:url" content={Astro.site} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <link rel="icon" type="image/png" href="/images/logo.png" />
+    <link rel="icon" type="image/png" href={`${import.meta.env.BASE_URL}images/logo.png`} />
     <link rel="icon" type="image/svg+xml" href={logoUrl} />
   </head>
   <body class="flex min-h-screen flex-col bg-base-100 font-sans text-base-content">

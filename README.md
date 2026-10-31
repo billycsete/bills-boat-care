@@ -12,6 +12,12 @@ Requires Node 22.22+ (run `npm install` first).
 |`npm run build`    | builds to built folder                             |
 |`npm run preview`  | serves the built folder locally to preview         |
 
+# Deploy
+
+Every push to `master` builds the site and publishes it to GitHub Pages
+(`.github/workflows/deploy.yml`). In the repo's Settings → Pages, Source must be
+"GitHub Actions".
+
 # Stack
 
 - [Astro](https://astro.build) for pages and components (`src/pages`, `src/components`, `src/layouts`)

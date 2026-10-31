@@ -13,12 +13,14 @@ interface Props {
 }
 
 const { src, alt, caption, aspect = 'aspect-[4/3]', class: className } = Astro.props;
+// Root-relative paths are under the site base (a subpath on the github.io URL)
+const imgSrc = src?.startsWith('/') ? `${import.meta.env.BASE_URL}${src.slice(1)}` : src;
 ---
 
 <figure class:list={['rounded-sm bg-white p-2.5 pb-3 shadow-lg shadow-base-content/10', className]}>
   {
     src ? (
-      <img class:list={['w-full rounded-[2px] object-cover', aspect]} src={src} alt={alt} loading="lazy" />
+      <img class:list={['w-full rounded-[2px] object-cover', aspect]} src={imgSrc} alt={alt} loading="lazy" />
     ) : (
       <div
         class:list={[
