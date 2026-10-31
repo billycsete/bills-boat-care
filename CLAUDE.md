@@ -42,6 +42,8 @@ Self-hosted via Fontsource and imported in `global.css`: Lora Variable (`font-di
 
 ### Photos
 `PhotoSlot.astro` renders a polaroid-style frame. Without a `src` it shows a striped placeholder labeled with the `alt` text. To add a real photo, put the file in `public/images/photos/` and pass `src="/images/photos/<file>"`.
+- Photos are resized copies of originals kept outside the repo: cropped to the slot's shape at 2× the frame's largest on-screen size (for retina screens), WebP at quality 78, with EXIF orientation applied and metadata (including GPS) stripped. `sharp` comes with Astro, so `sharp(src).rotate().resize(w, h, { fit: 'cover' }).webp({ quality: 78 })` does it (centered crop). Name files by what they show (`haul-out-travelift.webp`), and only keep files that are on the page.
+- Sizes per slot (the frame's `p-2.5` padding is already subtracted): hero large 856×1070, hero small 344×344, intro 728×546, gallery 668×668 (the gallery is widest just below `md`, at 2 columns). Recompute if a slot's width classes or `aspect` change.
 
 ### Footer water (`src/scripts/water.ts`)
 - `Footer.astro` loads it in a bundled `<script>`; it draws three wave layers on a WebGL canvas behind the footer content.
