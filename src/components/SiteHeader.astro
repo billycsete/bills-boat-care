@@ -11,11 +11,14 @@ import { site } from '../data/site';
       <span class="truncate font-display text-xl font-semibold md:text-[1.75rem]">{site.name}</span>
     </a>
     <div class="flex shrink-0 items-center gap-2">
-      <a href={`tel:${site.phone}`} class="btn btn-sm btn-primary md:btn-md">
+      <a
+        href={`tel:${site.phone}`}
+        class="btn btn-sm btn-primary [--btn-border:var(--color-primary)]! hover:[--btn-border:color-mix(in_oklab,var(--color-primary),#000_30%)]! md:btn-md"
+      >
         <Phone size={18} aria-hidden="true" />
         Call<span class="hidden md:inline">{site.phone}</span>
       </a>
-      <a href={`mailto:${site.email}`} class="btn btn-outline btn-sm max-sm:btn-square md:btn-md">
+      <a href={`mailto:${site.email}`} class="btn btn-outline btn-sm btn-primary hover:[--btn-border:color-mix(in_oklab,var(--color-primary),#000_30%)]! max-sm:btn-square md:btn-md">
         <Mail size={18} aria-hidden="true" />
         <span class="max-sm:sr-only">Email</span>
       </a>
