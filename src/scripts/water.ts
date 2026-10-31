@@ -130,6 +130,50 @@ void main() {
 }
 `;
 
+// The sailboat: flat-colored triangles in boat space (CSS px, y up, origin on the waterline
+// amidships), placed and tilted by the CPU buoyancy model below.
+const BOAT_VERTEX = `
+attribute vec2 a_pos;
+attribute vec3 a_color;
+uniform vec2 u_res;
+uniform vec2 u_origin;
+uniform float u_angle;
+varying vec3 v_color;
+
+void main() {
+  float c = cos(u_angle);
+  float s = sin(u_angle);
+  vec2 p = u_origin + vec2(a_pos.x * c - a_pos.y * s, -(a_pos.x * s + a_pos.y * c));
+  v_color = a_color;
+  gl_Position = vec4(p.x / u_res.x * 2.0 - 1.0, 1.0 - p.y / u_res.y * 2.0, 0.0, 1.0);
+}
+`;
+
+const BOAT_FRAGMENT = `
+precision mediump float;
+varying vec3 v_color;
+
+void main() {
+  gl_FragColor = vec4(v_color, 1.0);
+}
+`;
+
+/** Convex outlines in boat space, bow to the right, drawn in order. */
+function boatShapes(): [[number, number, number], [number, number][]][] {
+  // Mainsail leech: a curve from the masthead down to the end of the boom, bellied aft.
+  const leech: [number, number][] = [];
+  for (let i = 0; i <= 8; i++) {
+    const t = i / 8;
+    leech.push([(1 - t) ** 2 * 5 + 2 * (1 - t) * t * -12 + t * t * -17, (1 - t) ** 2 * 50 + 2 * (1 - t) * t * 34 + t * t * 9]);
+  }
+  return [
+    [hex('#9aa3b0'), [[3.3, 6], [4.7, 6], [4.7, 52], [3.3, 52]]], // mast
+    [hex('#dadee4'), [[5, 9], ...leech]], // mainsail
+    [hex('#c8ced7'), [[4, 45], [22, 8], [8, 8]]], // jib
+    [hex('#c4453b'), [[-20, 7], [24, 7], [15, -5], [-17, -5]]], // hull
+  ];
+}
+
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
   const shader = gl.createShader(type)!;
   gl.shaderSource(shader, source);
@@ -138,16 +182,21 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
   return shader;
 }
 
+function link(gl: WebGLRenderingContext, vertex: string, fragment: string) {
+  const program = gl.createProgram()!;
+  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, vertex));
+  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, fragment));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? 'link');
+  return program;
+}
+
 export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   const gl = canvas.getContext('webgl', { antialias: true, alpha: true, premultipliedAlpha: true });
   if (!gl) return;
 
-  const program = gl.createProgram()!;
-  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX));
-  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT));
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? 'link');
-  gl.useProgram(program);
+  const program = link(gl, VERTEX, FRAGMENT);
+  const boatProgram = link(gl, BOAT_VERTEX, BOAT_FRAGMENT);
 
   const loc = {
     x: gl.getAttribLocation(program, 'a_x'),
@@ -161,6 +210,25 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     deep: gl.getUniformLocation(program, 'u_deep'),
     highlight: gl.getUniformLocation(program, 'u_highlight'),
   };
+  const boatLoc = {
+    pos: gl.getAttribLocation(boatProgram, 'a_pos'),
+    color: gl.getAttribLocation(boatProgram, 'a_color'),
+    res: gl.getUniformLocation(boatProgram, 'u_res'),
+    origin: gl.getUniformLocation(boatProgram, 'u_origin'),
+    angle: gl.getUniformLocation(boatProgram, 'u_angle'),
+  };
+
+  // Fan-triangulate the boat's outlines into one interleaved buffer: x, y, r, g, b.
+  const boatData: number[] = [];
+  for (const [color, points] of boatShapes()) {
+    for (let i = 1; i < points.length - 1; i++) {
+      for (const p of [points[0], points[i], points[i + 1]]) boatData.push(...p, ...color);
+    }
+  }
+  const boatVertices = boatData.length / 5;
+  const boatGeometry = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, boatGeometry);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boatData), gl.STATIC_DRAW);
 
   const geometry = gl.createBuffer();
   const heights = gl.createBuffer();
@@ -249,6 +317,26 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
       this.presses = this.presses.filter((press) => press.age < PRESS_DURATION);
     }
 
+    /** Give the water around x (CSS px) a little vertical velocity, with no direct dent. */
+    nudge(x: number, dv: number, radius: number) {
+      const center = (x + EDGE_OVERDRAW) / COLUMN_SPACING;
+      const reach = Math.ceil((radius * 3) / COLUMN_SPACING);
+      const start = Math.max(0, Math.floor(center - reach));
+      const end = Math.min(columns - 1, Math.ceil(center + reach));
+      for (let i = start; i <= end; i++) {
+        const d = ((i - center) * COLUMN_SPACING) / radius;
+        this.v[i] += dv * Math.exp(-d * d);
+      }
+    }
+
+    /** Simulated height at x (CSS px of rest position), interpolated between columns. */
+    heightAt(x: number) {
+      const c = Math.min(Math.max((x + EDGE_OVERDRAW) / COLUMN_SPACING, 0), columns - 1);
+      const i = Math.floor(c);
+      const f = c - i;
+      return (this.h[i] ?? 0) * (1 - f) + (this.h[i + 1] ?? 0) * f;
+    }
+
     settled() {
       return !this.presses.length && this.h.every((y, i) => Math.abs(y) < 0.05 && Math.abs(this.v[i]) < 0.5);
     }
@@ -278,6 +366,89 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     gl!.bufferData(gl!.ARRAY_BUFFER, data, gl!.STATIC_DRAW);
     gl!.bindBuffer(gl!.ARRAY_BUFFER, heights);
     gl!.bufferData(gl!.ARRAY_BUFFER, vertexHeights, gl!.DYNAMIC_DRAW);
+
+    if (!boat.placed) {
+      boat.x = width * 0.3;
+      boat.y = boat.water = surfaceY(BOAT_LAYER, boat.x);
+      boat.placed = true;
+    }
+  }
+
+  /** A layer's surface at x (CSS px from the top of the canvas), swell and simulation included. */
+  function surfaceY(n: number, x: number) {
+    const { base, waves } = LAYERS[n];
+    // Gerstner waves shift points sideways, so first find the rest position drawn at x.
+    let rest = x;
+    for (let iteration = 0; iteration < 4; iteration++) {
+      let shift = 0;
+      for (const [amplitude, wavelength, speed, steepness] of waves) {
+        const k = (2 * Math.PI) / wavelength;
+        if (amplitude) shift += (steepness / k) * Math.sin(k * (rest - speed * time));
+      }
+      rest = x + shift;
+    }
+    let lift = surfaces[n].heightAt(rest);
+    for (const [amplitude, wavelength, speed] of waves) {
+      if (amplitude) lift += amplitude * Math.cos(((2 * Math.PI) / wavelength) * (rest - speed * time));
+    }
+    return base - lift;
+  }
+
+  // The sailboat floats on the middle line and is drawn just behind it, so its keel sits under
+  // the water. Buoyancy springs it toward the surface under its hull and tilts it to match the
+  // slope between bow and stern. Disturbances in the simulated water push it away (toward
+  // calmer water), it drifts slowly to the right and wraps around, and as it bobs against the
+  // water it stirs up small ripples of its own. Tapping it dunks it.
+  const BOAT_LAYER = 1;
+  const BOAT_HALF_LENGTH = 18; // px between amidships and the bow and stern sample points
+  const BUOYANCY = 120; // spring toward the surface (1/s²)
+  const BOB_DAMPING = 9; // 1/s
+  const TILT_SPRING = 90;
+  const TILT_DAMPING = 10;
+  const DRIFT = 9; // px/s
+  const DRIFT_DRAG = 0.8; // 1/s; how quickly it returns to its drift speed
+  const RIPPLE_PUSH = 220;
+  const STIR = 8; // how much the boat's bobbing stirs the water
+  const DUNK = 90; // px/s
+  const boat = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0, water: 0, placed: false };
+
+  function updateBoat(dt: number) {
+    if (!dt) return;
+    const surface = surfaces[BOAT_LAYER];
+    const stern = surfaceY(BOAT_LAYER, boat.x - BOAT_HALF_LENGTH);
+    const mid = surfaceY(BOAT_LAYER, boat.x);
+    const bow = surfaceY(BOAT_LAYER, boat.x + BOAT_HALF_LENGTH);
+    const water = (stern + 2 * mid + bow) / 4;
+    const waterSpeed = (water - boat.water) / dt;
+    boat.water = water;
+
+    boat.vy += (BUOYANCY * (water - boat.y) - BOB_DAMPING * (boat.vy - waterSpeed)) * dt;
+    boat.y += boat.vy * dt;
+    const tilt = Math.atan2(stern - bow, BOAT_HALF_LENGTH * 2);
+    boat.spin += (TILT_SPRING * (tilt - boat.angle) - TILT_DAMPING * boat.spin) * dt;
+    boat.angle = Math.min(Math.max(boat.angle + boat.spin * dt, -0.6), 0.6);
+
+    // -h·dh/dx points away from where the water is most displaced.
+    const h = surface.heightAt(boat.x);
+    const slope = (surface.heightAt(boat.x + BOAT_HALF_LENGTH) - surface.heightAt(boat.x - BOAT_HALF_LENGTH)) / (BOAT_HALF_LENGTH * 2);
+    const drift = reducedMotion.matches ? 0 : DRIFT;
+    boat.vx += (-RIPPLE_PUSH * h * slope + (drift - boat.vx) * DRIFT_DRAG) * dt;
+    boat.vx = Math.min(Math.max(boat.vx, -80), 80);
+    boat.x += boat.vx * dt;
+
+    // Moving down through the water pushes it down (and up pulls it up), sending out ripples.
+    surface.nudge(boat.x, -STIR * (boat.vy - waterSpeed) * dt, BOAT_HALF_LENGTH);
+
+    const margin = BOAT_HALF_LENGTH * 2;
+    if (boat.x > width + margin || boat.x < -margin) {
+      boat.x = boat.x > 0 ? -margin : width + margin;
+      boat.y = boat.water = surfaceY(BOAT_LAYER, boat.x);
+      boat.vy = 0;
+    }
+  }
+
+  function boatSettled() {
+    return Math.abs(boat.vx) < 0.5 && Math.abs(boat.vy) < 0.5 && Math.abs(boat.spin) < 0.01;
   }
 
   // Pointer and touch: a pointer moving in the air above the waves presses the water down
@@ -292,16 +463,7 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   }
   /** Top of the visible water at x (CSS px from the canvas top): the highest of all layers, swell included. */
   function waterTopAt(x: number) {
-    const column = Math.round((x + EDGE_OVERDRAW) / COLUMN_SPACING);
-    let top = Infinity;
-    LAYERS.forEach((layer, n) => {
-      let lift = surfaces[n].h[column] ?? 0;
-      for (const [amplitude, wavelength, speed] of layer.waves) {
-        if (amplitude) lift += amplitude * Math.cos(((2 * Math.PI) / wavelength) * (x - speed * time));
-      }
-      top = Math.min(top, layer.base - lift);
-    });
-    return top;
+    return Math.min(...LAYERS.map((_, n) => surfaceY(n, x)));
   }
   const POINTER_RADIUS = 16; // px; width of the dent a pointer presses into the water
   const GAP = 24; // px above the water where nothing is triggered
@@ -341,6 +503,12 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   });
   window.addEventListener('pointerdown', (e) => {
     const p = local(e);
+    const dx = p.x - boat.x;
+    if (Math.abs(dx) < BOAT_HALF_LENGTH + 6 && p.y > boat.y - 54 && p.y < boat.y + 6) {
+      boat.vy += DUNK;
+      boat.spin += dx > 0 ? -1.5 : 1.5; // the tapped end dips
+      wake();
+    }
     influence(p).forEach((strength, n) => {
       if (strength > 0) {
         surfaces[n].push(p.x, -TAP_FORCE * strength, POINTER_RADIUS * 1.25);
@@ -359,16 +527,19 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   function draw() {
     gl!.clearColor(0, 0, 0, 0);
     gl!.clear(gl!.COLOR_BUFFER_BIT);
-    gl!.uniform2f(loc.res, width, height);
-    gl!.uniform1f(loc.time, time);
-
-    gl!.bindBuffer(gl!.ARRAY_BUFFER, geometry);
-    gl!.enableVertexAttribArray(loc.x);
-    gl!.vertexAttribPointer(loc.x, 1, gl!.FLOAT, false, 8, 0);
-    gl!.enableVertexAttribArray(loc.side);
-    gl!.vertexAttribPointer(loc.side, 1, gl!.FLOAT, false, 8, 4);
 
     LAYERS.forEach((layer, n) => {
+      if (n === BOAT_LAYER) drawBoat();
+
+      gl!.useProgram(program);
+      gl!.uniform2f(loc.res, width, height);
+      gl!.uniform1f(loc.time, time);
+      gl!.bindBuffer(gl!.ARRAY_BUFFER, geometry);
+      gl!.enableVertexAttribArray(loc.x);
+      gl!.vertexAttribPointer(loc.x, 1, gl!.FLOAT, false, 8, 0);
+      gl!.enableVertexAttribArray(loc.side);
+      gl!.vertexAttribPointer(loc.side, 1, gl!.FLOAT, false, 8, 4);
+
       // Upload this layer's simulated heights (same value for both vertices of a column).
       const { h } = surfaces[n];
       for (let i = 0; i < columns; i++) {
@@ -389,15 +560,32 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     });
   }
 
+  function drawBoat() {
+    [loc.x, loc.side, loc.h].forEach((attribute) => gl!.disableVertexAttribArray(attribute));
+    gl!.useProgram(boatProgram);
+    gl!.uniform2f(boatLoc.res, width, height);
+    gl!.uniform2f(boatLoc.origin, boat.x, boat.y);
+    gl!.uniform1f(boatLoc.angle, boat.angle);
+    gl!.bindBuffer(gl!.ARRAY_BUFFER, boatGeometry);
+    gl!.enableVertexAttribArray(boatLoc.pos);
+    gl!.vertexAttribPointer(boatLoc.pos, 2, gl!.FLOAT, false, 20, 0);
+    gl!.enableVertexAttribArray(boatLoc.color);
+    gl!.vertexAttribPointer(boatLoc.color, 3, gl!.FLOAT, false, 20, 8);
+    gl!.drawArrays(gl!.TRIANGLES, 0, boatVertices);
+    gl!.disableVertexAttribArray(boatLoc.pos);
+    gl!.disableVertexAttribArray(boatLoc.color);
+  }
+
   function tick(now: number) {
     frame = 0;
     const dt = Math.min((now - previous) / 1000, 1 / 30);
     previous = now;
     if (!reducedMotion.matches) time += dt;
     surfaces.forEach((surface) => surface.simulate(dt));
+    updateBoat(dt);
     draw();
     // With reduced motion the ambient swell is frozen; keep running only while a disturbance settles.
-    const settled = reducedMotion.matches && surfaces.every((surface) => surface.settled());
+    const settled = reducedMotion.matches && boatSettled() && surfaces.every((surface) => surface.settled());
     if (visible && !settled) frame = requestAnimationFrame(tick);
   }
 
