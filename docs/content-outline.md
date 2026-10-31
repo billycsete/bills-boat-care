@@ -18,11 +18,11 @@ An outline of the content on the single-page site (`src/pages/index.astro`), in 
 - **Heading (H1):** Your boat, ready for the *next adventure.*
 - **Body:** Hands-on maintenance and management for sail and power boats in the Santa Barbara area, so whenever you're ready to go, the boat is too.
 - **Facts row (with icons):** Sail & power · 30 to 60 feet · Santa Barbara, CA
-- **Photos:** a client's boat on the water (large); work in progress (small, overlapping)
+- **Photos:** a client's sailboat in its slip under a rainbow (large); a power trawler at anchor at sunset (small, overlapping)
 
 ## 3. Intro (`Intro`)
 
-- **Photo:** Bill on the dock, captioned "Bill, on the dock"
+- **Photo:** Bill at the helm, captioned "Bill, at the helm"
 - **Heading (H2):** The jobs too small for a vendor, and too tedious for your Saturday.
 - **Body:** I take on the tasks owners don't care to do, don't have time for, or that are too minor for vendors to bother with. The goal is simple: your boat is always ready to take wherever the next adventure might be.
 - **Body:** For larger jobs, I bring in the best of the local vendors in Santa Barbara and Ventura.
@@ -55,9 +55,7 @@ An outline of the content on the single-page site (`src/pages/index.astro`), in 
 
 - **Heading (H2):** From the logbook
 - **Body:** A few snapshots from around the harbor.
-- **Photos (captions):** Engine day, Haul out, Brightwork, Delivery up the coast
-
-> All photos are placeholders until real images are added (`src` prop on `PhotoSlot`).
+- **Photos (captions):** Engine day, Haul out, Rigging, Delivery up the coast
 
 ## 7. Quote (`Quote`)
 
