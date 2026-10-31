@@ -15,8 +15,6 @@ interface Layer {
   surface: [number, number, number];
   deep: [number, number, number];
   highlight: number;
-  /** Height (px) above the top of the water where a pointer pushes this layer hardest. */
-  trigger: number;
   /** Gerstner waves: amplitude (px), wavelength (px), speed (px/s, sign = direction), steepness.
    *  Steepness bunches points toward the crests; keep each layer's total under 1 so crests never fold. */
   waves: [number, number, number, number][];
@@ -35,7 +33,6 @@ const LAYERS: Layer[] = [
     surface: hex('#3552b0'),
     deep: hex('#2c439f'),
     highlight: 0.12,
-    trigger: 150,
     waves: [
       [5, 420, -22, 0.25],
       [3, 230, 30, 0.2],
@@ -48,7 +45,6 @@ const LAYERS: Layer[] = [
     surface: hex('#2a46a6'),
     deep: hex('#1d3089'),
     highlight: 0.16,
-    trigger: 100,
     waves: [
       [6, 520, 28, 0.3],
       [3.5, 260, -24, 0.2],
@@ -61,7 +57,6 @@ const LAYERS: Layer[] = [
     surface: hex('#1d3291'),
     deep: hex('#0e1a58'),
     highlight: 0.24,
-    trigger: 55,
     waves: [
       [7, 640, 34, 0.35],
       [4, 300, -30, 0.25],
@@ -451,43 +446,40 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     return Math.abs(boat.vx) < 0.5 && Math.abs(boat.vy) < 0.5 && Math.abs(boat.spin) < 0.01;
   }
 
-  // Pointer and touch: a pointer moving in the air above the waves presses the water down
-  // very gently, like a breeze; a press or tap there drops a tiny splash. Each layer has its
-  // own trigger band at a different height (Layer.trigger), so as the pointer comes down the
-  // lines respond one after another rather than all at once. Pointers on or in the water do
-  // nothing. Listens on the window so the pointer can come from the page above.
-  let last: { x: number; y: number; t: number } | null = null;
-  function local(e: PointerEvent) {
+  // Pointer and touch: a pointer moving just above a wave line presses that line down very
+  // gently, like a breeze; a press or tap there drops a tiny splash. Each line reacts in its
+  // own narrow band (REACH px above it), so as the pointer comes down the lines respond one
+  // after another rather than all at once, and a pointer on or below a line does nothing to
+  // it. Listens on the window so the pointer can come from the page above.
+  // Finger drags come from touchmove, because pointer events stop once the browser starts
+  // scrolling; stroke speed is measured on screen, since a dragging finger carries the page.
+  let last: { x: number; y: number; t: number } | null = null; // client px
+  function local(e: { clientX: number; clientY: number }) {
     const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top, t: e.timeStamp };
-  }
-  /** Top of the visible water at x (CSS px from the canvas top): the highest of all layers, swell included. */
-  function waterTopAt(x: number) {
-    return Math.min(...LAYERS.map((_, n) => surfaceY(n, x)));
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
   const POINTER_RADIUS = 16; // px; width of the dent a pointer presses into the water
-  const GAP = 24; // px above the water where nothing is triggered
-  const TRIGGER_WIDTH = 45; // px; half-height of each layer's trigger band
-  const MOVE_FORCE = 0.04; // per px/s of downward pointer speed
-  const WAKE_FORCE = 0.006; // per px/s of sideways pointer speed
-  const TAP_FORCE = 70;
+  const REACH = 10; // px above a line where the pointer pushes it hardest; fades out at the line and at 2× this
+  const MOVE_FORCE = 0.048; // per px/s of downward pointer speed
+  const WAKE_FORCE = 0.0072; // per px/s of sideways pointer speed
+  const TAP_FORCE = 84;
   const smoothstep = (a: number, b: number, v: number) => {
     const t = Math.min(Math.max((v - a) / (b - a), 0), 1);
     return t * t * (3 - 2 * t);
   };
-  /** How strongly the pointer affects each layer (0 to 1), from its height above the water. */
+  /** How strongly the pointer affects each layer (0 to 1), from its height above that layer's line. */
   function influence(p: { x: number; y: number }) {
-    const above = waterTopAt(p.x) - p.y;
-    const outside = above < GAP || p.x < 0 || p.x > width;
-    return LAYERS.map((layer) => (outside ? 0 : 1 - smoothstep(0, TRIGGER_WIDTH, Math.abs(above - layer.trigger))));
+    if (p.x < 0 || p.x > width) return LAYERS.map(() => 0);
+    return LAYERS.map((_, n) => 1 - smoothstep(0, REACH, Math.abs(surfaceY(n, p.x) - p.y - REACH)));
   }
-  window.addEventListener('pointermove', (e) => {
-    const p = local(e);
+  function stroke(e: { clientX: number; clientY: number }, t: number) {
+    const now = { x: e.clientX, y: e.clientY, t };
     // Treat a long pause as a fresh start so a jump doesn't read as a fast stroke.
-    if (last && p.t > last.t && p.t - last.t < 100) {
-      const dt = Math.max((p.t - last.t) / 1000, 1 / 240);
-      const vx = (p.x - last.x) / dt;
-      const vy = (p.y - last.y) / dt;
+    if (last && now.t > last.t && now.t - last.t < 100) {
+      const p = local(e);
+      const dt = Math.max((now.t - last.t) / 1000, 1 / 240);
+      const vx = (now.x - last.x) / dt;
+      const vy = (now.y - last.y) / dt;
       // Only ever presses the water down: downward strokes push it, sideways strokes leave
       // a light wake, and upward strokes add nothing (the water never follows the pointer up).
       // Speeds are capped low so a fast swipe stays as gentle and narrow as a slow one.
@@ -499,8 +491,18 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
         }
       });
     }
-    last = p;
+    last = now;
+  }
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'touch') stroke(e, e.timeStamp);
   });
+  window.addEventListener(
+    'touchmove',
+    (e) => {
+      if (e.touches.length === 1) stroke(e.touches[0], e.timeStamp);
+    },
+    { passive: true },
+  );
   window.addEventListener('pointerdown', (e) => {
     const p = local(e);
     const dx = p.x - boat.x;
@@ -515,7 +517,7 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
         wake();
       }
     });
-    last = p;
+    last = { x: e.clientX, y: e.clientY, t: e.timeStamp };
   });
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
