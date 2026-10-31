@@ -1,5 +1,5 @@
 ---
-import { Mail, MapPin, Phone, Ruler, Sailboat } from '@lucide/astro';
+import { MapPin, Ruler, Sailboat } from '@lucide/astro';
 import PhotoSlot from './PhotoSlot.astro';
 import { site } from '../data/site';
 
@@ -21,16 +21,6 @@ const facts = [
       Hands-on maintenance and management for sail and power boats in the Santa Barbara area, so whenever you're ready
       to go, the boat is too.
     </p>
-    <div class="mt-8 flex flex-wrap gap-3">
-      <a href={`tel:${site.phone}`} class="btn btn-lg btn-primary">
-        <Phone size={20} aria-hidden="true" />
-        Call {site.phone}
-      </a>
-      <a href={`mailto:${site.email}`} class="btn btn-outline btn-lg">
-        <Mail size={20} aria-hidden="true" />
-        Email me
-      </a>
-    </div>
     <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-medium text-base-content/70">
       {
         facts.map(({ icon: Icon, text }) => (

@@ -1,11 +1,24 @@
 ---
+import { Mail, Phone } from '@lucide/astro';
 import Logo from '../assets/logo.svg';
 import { site } from '../data/site';
 ---
 
-<header class="mx-auto flex w-full max-w-6xl items-center px-5 py-4 md:px-8">
-  <a href={import.meta.env.BASE_URL} class="flex items-center gap-2.5">
-    <Logo class="h-9 w-[33px]" aria-hidden="true" />
-    <span class="font-display text-xl font-semibold">{site.name}</span>
-  </a>
+<header class="sticky top-0 z-40 border-b border-base-300/70 bg-base-100/90 backdrop-blur">
+  <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-5 py-3 md:px-8">
+    <a href={import.meta.env.BASE_URL} class="flex min-w-0 items-center gap-2.5">
+      <Logo class="h-7 w-[26px] shrink-0 md:h-9 md:w-[33px]" aria-hidden="true" />
+      <span class="truncate font-display text-xl font-semibold md:text-[1.75rem]">{site.name}</span>
+    </a>
+    <div class="flex shrink-0 items-center gap-2">
+      <a href={`tel:${site.phone}`} class="btn btn-sm btn-primary md:btn-md">
+        <Phone size={18} aria-hidden="true" />
+        Call<span class="hidden md:inline">{site.phone}</span>
+      </a>
+      <a href={`mailto:${site.email}`} class="btn btn-outline btn-sm max-sm:btn-square md:btn-md">
+        <Mail size={18} aria-hidden="true" />
+        <span class="max-sm:sr-only">Email</span>
+      </a>
+    </div>
+  </div>
 </header>

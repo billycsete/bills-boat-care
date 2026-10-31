@@ -46,6 +46,7 @@ Self-hosted via Fontsource and imported in `global.css`: Lora Variable (`font-di
 ### Footer water (`src/scripts/water.ts`)
 - `Footer.astro` loads it in a bundled `<script>`; it draws three wave layers on a WebGL canvas behind the footer content.
 - Ambient swell is summed Gerstner waves in the vertex shader; each layer also runs its own 1D wave-equation simulation on the CPU (`Surface`). Only a pointer in the air above the water pushes on it, measured from the highest visible wave: nothing within `GAP` px, then each layer reacts in its own band around `Layer.trigger` (back line highest, front line lowest), so the lines respond one after another. Pointers on or in the water do nothing, and force only ever presses down. Strength is set by `MOVE_FORCE`, `WAKE_FORCE` and `TAP_FORCE`.
+- A small sailboat floats on the middle layer (`BOAT_LAYER`), drawn just behind it so its keel sits underwater. It bobs and tilts with the surface (`surfaceY`), gets pushed away from disturbances, drifts right and wraps, stirs small ripples as it bobs, and dunks when tapped. Its shapes and colors are in `boatShapes()`, its tuning constants next to `BOAT_LAYER`.
 - Layer colors, resting heights and wave settings are in the `LAYERS` array. The front surface rests 110px from the top of the footer and is clamped so it never reaches the text (`pt-44`); keep those in sync.
 - It pauses offscreen, freezes the ambient swell under `prefers-reduced-motion`, and leaves the static SVG fallback waves in place if WebGL is unavailable.
 
@@ -63,7 +64,7 @@ src/
   layouts/Layout.astro      <html>/<head>, meta tags, global CSS
   pages/index.astro         the single page: composes the section components in order
   components/               one component per section (SiteHeader, Hero, Intro, Services,
-                            Credentials, Gallery, Quote, Footer, MobileCallBar)
+                            Credentials, Gallery, Quote, Footer)
     PhotoSlot.astro         photo frame with placeholder fallback
   scripts/water.ts          WebGL water simulation used by Footer.astro
   data/site.ts              name, email, phone, area (use these, don't hard-code contact details)
