@@ -453,7 +453,11 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   // it. Listens on the window so the pointer can come from the page above.
   // Finger drags come from touchmove, because pointer events stop once the browser starts
   // scrolling; stroke speed is measured on screen, since a dragging finger carries the page.
+  // A finger pushes harder than a cursor (TOUCH_BOOST), and one held in a line's band keeps
+  // pressing it every frame, ramping up the longer it's held until it reaches HOLD_FORCE.
+  // A click or touch-down drops a big splash (TAP_FORCE), and holding the button presses like a finger.
   let last: { x: number; y: number; t: number } | null = null; // client px
+  let hold: { clientX: number; clientY: number; time: number } | null = null; // the finger or button held down, if any
   function local(e: { clientX: number; clientY: number }) {
     const rect = canvas.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -462,7 +466,11 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
   const REACH = 10; // px above a line where the pointer pushes it hardest; fades out at the line and at 2× this
   const MOVE_FORCE = 0.048; // per px/s of downward pointer speed
   const WAKE_FORCE = 0.0072; // per px/s of sideways pointer speed
-  const TAP_FORCE = 84;
+  const TAP_FORCE = 420; // the splash from a click or touch-down; big, so a press lands with a clear push
+  const TOUCH_BOOST = 2; // finger strokes push this many times harder than a moving cursor
+  const HOLD_FORCE = 500; // force per second a held finger or button presses with once fully ramped (the cap)
+  const HOLD_START = 0.3; // share of HOLD_FORCE a hold starts at
+  const HOLD_RAMP = 1.5; // s for a hold to ramp up to full HOLD_FORCE
   const smoothstep = (a: number, b: number, v: number) => {
     const t = Math.min(Math.max((v - a) / (b - a), 0), 1);
     return t * t * (3 - 2 * t);
@@ -472,7 +480,17 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     if (p.x < 0 || p.x > width) return LAYERS.map(() => 0);
     return LAYERS.map((_, n) => 1 - smoothstep(0, REACH, Math.abs(surfaceY(n, p.x) - p.y - REACH)));
   }
-  function stroke(e: { clientX: number; clientY: number }, t: number) {
+  const PRESS_ZONE = 176; // px from the canvas top where the footer text starts (Footer.astro's pt-44); keep in sync
+  /** Which layer a click, tap or hold presses (1 for that layer, 0 for the rest). Unlike hover, presses
+   *  have no gaps: anywhere from the top of the footer down to its text presses the first line below
+   *  the pointer, or the front line from inside the water below it. */
+  function pressed(p: { x: number; y: number }) {
+    if (p.x < 0 || p.x > width || p.y < 0 || p.y > PRESS_ZONE) return LAYERS.map(() => 0);
+    const below = LAYERS.findIndex((_, n) => surfaceY(n, p.x) > p.y);
+    const target = below === -1 ? LAYERS.length - 1 : below;
+    return LAYERS.map((_, n) => (n === target ? 1 : 0));
+  }
+  function stroke(e: { clientX: number; clientY: number }, t: number, boost: number) {
     const now = { x: e.clientX, y: e.clientY, t };
     // Treat a long pause as a fresh start so a jump doesn't read as a fast stroke.
     if (last && now.t > last.t && now.t - last.t < 100) {
@@ -483,7 +501,8 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
       // Only ever presses the water down: downward strokes push it, sideways strokes leave
       // a light wake, and upward strokes add nothing (the water never follows the pointer up).
       // Speeds are capped low so a fast swipe stays as gentle and narrow as a slow one.
-      const force = -(Math.min(Math.max(vy, 0), 600) * MOVE_FORCE + Math.min(Math.abs(vx), 500) * WAKE_FORCE);
+      const force =
+        -(Math.min(Math.max(vy, 0), 600) * MOVE_FORCE + Math.min(Math.abs(vx), 500) * WAKE_FORCE) * boost;
       influence(p).forEach((strength, n) => {
         if (strength > 0 && force < 0) {
           surfaces[n].push(p.x, force * strength, POINTER_RADIUS);
@@ -494,15 +513,52 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     last = now;
   }
   window.addEventListener('pointermove', (e) => {
-    if (e.pointerType !== 'touch') stroke(e, e.timeStamp);
+    if (e.pointerType === 'touch') return;
+    if (hold) Object.assign(hold, { clientX: e.clientX, clientY: e.clientY });
+    stroke(e, e.timeStamp, 1);
   });
+  for (const type of ['pointerup', 'pointercancel']) {
+    window.addEventListener(type, (e) => {
+      if ((e as PointerEvent).pointerType !== 'touch') hold = null;
+    });
+  }
+  window.addEventListener('blur', () => (hold = null)); // a button released outside the window
   window.addEventListener(
-    'touchmove',
+    'touchstart',
     (e) => {
-      if (e.touches.length === 1) stroke(e.touches[0], e.timeStamp);
+      const touch = e.touches[0];
+      hold = e.touches.length === 1 ? { clientX: touch.clientX, clientY: touch.clientY, time: 0 } : null;
+      wake();
     },
     { passive: true },
   );
+  window.addEventListener(
+    'touchmove',
+    (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      if (hold) Object.assign(hold, { clientX: touch.clientX, clientY: touch.clientY });
+      stroke(touch, e.timeStamp, TOUCH_BOOST);
+    },
+    { passive: true },
+  );
+  for (const type of ['touchend', 'touchcancel']) window.addEventListener(type, () => (hold = null));
+  /** Press the water under a held finger or button for this frame; runs from tick. */
+  function pressHeld(dt: number) {
+    if (!hold) return;
+    // Measured from the canvas every frame, since the page may scroll under a still finger.
+    const p = local(hold);
+    const strengths = pressed(p);
+    if (!strengths.some((strength) => strength > 0)) {
+      hold.time = 0; // the ramp starts over when the finger comes back to the water
+      return;
+    }
+    hold.time += dt;
+    const ramp = HOLD_START + (1 - HOLD_START) * Math.min(hold.time / HOLD_RAMP, 1);
+    strengths.forEach((strength, n) => {
+      if (strength > 0) surfaces[n].push(p.x, -HOLD_FORCE * ramp * strength * dt, POINTER_RADIUS * 1.25);
+    });
+  }
   window.addEventListener('pointerdown', (e) => {
     const p = local(e);
     const dx = p.x - boat.x;
@@ -511,13 +567,18 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
       boat.spin += dx > 0 ? -1.5 : 1.5; // the tapped end dips
       wake();
     }
-    influence(p).forEach((strength, n) => {
+    pressed(p).forEach((strength, n) => {
       if (strength > 0) {
         surfaces[n].push(p.x, -TAP_FORCE * strength, POINTER_RADIUS * 1.25);
         wake();
       }
     });
     last = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+    // Touch holds start from touchstart, since pointer events stop once the page scrolls.
+    if (e.pointerType !== 'touch') {
+      hold = { clientX: e.clientX, clientY: e.clientY, time: 0 };
+      wake();
+    }
   });
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -583,11 +644,13 @@ export function startWater(root: HTMLElement, canvas: HTMLCanvasElement) {
     const dt = Math.min((now - previous) / 1000, 1 / 30);
     previous = now;
     if (!reducedMotion.matches) time += dt;
+    pressHeld(dt);
     surfaces.forEach((surface) => surface.simulate(dt));
     updateBoat(dt);
     draw();
     // With reduced motion the ambient swell is frozen; keep running only while a disturbance settles.
-    const settled = reducedMotion.matches && boatSettled() && surfaces.every((surface) => surface.settled());
+    const settled =
+      reducedMotion.matches && !hold && boatSettled() && surfaces.every((surface) => surface.settled());
     if (visible && !settled) frame = requestAnimationFrame(tick);
   }
 
